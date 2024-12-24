@@ -1,15 +1,35 @@
 pipeline {
-    agent any
+    agent { label 'Slave' } // Replace 'your-agent-label' with the actual agent label
 
     stages {
         stage('Checkout Code') {
             steps {
-                // Checking out the repository
+                // Checking out the repository using credentials
                 checkout([
                         $class: 'GitSCM',
                         branches: [[name: '*/main']],
-                        userRemoteConfigs: [[url: 'https://github.com/devops5014/sample-webapp.git']]
+                        userRemoteConfigs: [[
+                                                    url: 'https://github.com/devops5014/sample-webapp.git',
+                                                    credentialsId: 'github-pass'
+                                            ]]
                 ])
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('Deploy to Artifactory') {
+            steps {
+                // Deploy artifacts to Artifactory using the same settings.xml
+                configFileProvider([configFile(fileId: '26011da0-7739-4669-8174-d6d864cfaa2a', variable: 'MAVEN_SETTINGS')]) {
+                    sh '''
+                        mvn deploy -s $MAVEN_SETTINGS
+                    '''
+                }
             }
         }
     }
